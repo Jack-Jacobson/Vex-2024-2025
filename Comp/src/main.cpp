@@ -8,9 +8,13 @@
     /*----------------------------------------------------------------------------*/
 
     #include "vex.h"
+
     #include <iostream>
+
     #include <cstring>
+
     #include <cmath>
+
     using namespace vex;
 
     competition Competition;
@@ -33,63 +37,61 @@
 
     int leftVel = 0, rightVel = 0, driveCompleted = 0, touchX, touchY, currentAuton = 2;
 
-    bool temp = false, slowSpeed = false, turnCompleted = false, functionRunning, mogoClamped = false;
-    double leftDistance, turnSpeed, rightDistance, currentHeading = 0, distanceToTarget, headingToTarget, targetHeading, startX = 0, startY = 0;
+    bool temp = false, slowSpeed = false, turnCompleted = false, functionRunning, mogoClamped = false, fastTurn;
+    double leftDistance, rightDistance, currentHeading = 0, distanceToTarget, headingToTarget, targetHeading, startX = 0, startY = 0;
     double initialHeading = 90;
     double p, i, d, error, pGain, leftVel2, rightVel2, LDT, RDT, PLDT, PRDT, DT, leftDistanceMM, rightDistanceMM, dXLoc, dYLoc, XLoc = startX, YLoc = startY;
     double wheelDiameter = 69.85;
     double wheelbase = 304.8;
     double wheelCircumference = 3.14159265358979323846 * wheelDiameter;
 
-    std::string screen = "main";    
+    std::string screen = "main";
 
     double normalizeHeading(double heading) {
-        while (heading > 180) heading -= 360;
-        while (heading <= -180) heading += 360;
-        return heading;
+      while (heading > 180) heading -= 360;
+      while (heading <= -180) heading += 360;
+      return heading;
     }
 
     void drawButton(int x, int y, int w, int h, std::string t, std::string destination) {
-        Brain.Screen.setFillColor(black);   
-        Brain.Screen.setPenColor(white);
-        Brain.Screen.drawRectangle(x, y, w, h);
-        
-        int textWidth = Brain.Screen.getStringWidth(t.c_str());
-        int textHeight = Brain.Screen.getStringHeight(t.c_str());
-        int textX = x + (w - textWidth) / 2;
-        int textY = y + h/2;
-        Brain.Screen.printAt(textX, textY, false, t.c_str());
-        
-        if (Brain.Screen.pressing()) {
-            int touchX = Brain.Screen.xPosition();
-            int touchY = Brain.Screen.yPosition();
+      Brain.Screen.setFillColor(black);
+      Brain.Screen.setPenColor(white);
+      Brain.Screen.drawRectangle(x, y, w, h);
 
-            if (touchX >= x && touchX <= x + w && touchY >= y && touchY <= y + h) {
-                screen = destination; 
-                Brain.Screen.clearScreen(); 
-                return;
-            }
+      int textWidth = Brain.Screen.getStringWidth(t.c_str());
+      int textHeight = Brain.Screen.getStringHeight(t.c_str());
+      int textX = x + (w - textWidth) / 2;
+      int textY = y + h / 2;
+      Brain.Screen.printAt(textX, textY, false, t.c_str());
+
+      if (Brain.Screen.pressing()) {
+        int touchX = Brain.Screen.xPosition();
+        int touchY = Brain.Screen.yPosition();
+
+        if (touchX >= x && touchX <= x + w && touchY >= y && touchY <= y + h) {
+          screen = destination;
+          Brain.Screen.clearScreen();
+          return;
         }
+      }
     }
-
 
     void UI() {
 
-        if(screen == "main"){
+      if (screen == "main") {
 
         Brain.Screen.clearScreen();
-        drawButton(0, 0, 240, 120, "PID Troubleshoot UI", "PIDUI" );
+        drawButton(0, 0, 240, 120, "PID Troubleshoot UI", "PIDUI");
         drawButton(240, 0, 239, 120, "Motor Temperatures", "temps");
-        drawButton(0, 120, 240, 119, "Other Troubleshooting UI", "troubleshootUI");   
+        drawButton(0, 120, 240, 119, "Other Troubleshooting UI", "troubleshootUI");
         //drawButton(240, 120, 240, 119, "Auton Select", "atuon");     
         Brain.Screen.render();
 
-        }
-        else if(screen == "PIDUI"){
+      } else if (screen == "PIDUI") {
         Brain.Screen.setCursor(1, 1);
         Brain.Screen.setPenColor(white);
         Brain.Screen.setFillColor(black);
-        Brain.Screen.clearScreen(); 
+        Brain.Screen.clearScreen();
         Brain.Screen.print("Current heading: ");
         Brain.Screen.print(currentHeading);
         Brain.Screen.newLine();
@@ -121,15 +123,14 @@
         Brain.Screen.print(distanceToTarget);
         Brain.Screen.newLine();
         Brain.Screen.print("DrivingToPoint?: ");
-        if(functionRunning) Brain.Screen.print("True");
+        if (functionRunning) Brain.Screen.print("True");
         else Brain.Screen.print("False");
         Brain.Screen.newLine();
         Brain.Screen.print("Current Scene: ");
         Brain.Screen.print("%s", screen.c_str());
         drawButton(429, 205, 50, 35, "Back", "main");
         Brain.Screen.render();
-        }
-        else if(screen == "temps"){
+      } else if (screen == "temps") {
         Brain.Screen.setCursor(1, 1);
         Brain.Screen.setPenColor(white);
         Brain.Screen.setFillColor(black);
@@ -157,10 +158,9 @@
         Brain.Screen.print(backRightDrive.temperature(celsius));
         drawButton(429, 205, 50, 35, "Back", "main");
         Brain.Screen.render();
-        }
-    else if(screen == "troubleshootUI"){
+      } else if (screen == "troubleshootUI") {
         Brain.Screen.clearScreen();
-        Brain.Screen.setCursor(1,1);
+        Brain.Screen.setCursor(1, 1);
         Brain.Screen.setFillColor(black);
         Brain.Screen.setPenColor(white);
         Brain.Screen.print("Left Y-Axis (3) Pos: ");
@@ -182,32 +182,31 @@
         Brain.Screen.newLine();
         Brain.Screen.print("Current Scene: ");
         Brain.Screen.print("%s", screen.c_str());
-            drawButton(429, 205, 50, 35, "Back", "main");
+        Brain.Screen.print("fastTurn: ");
+        Brain.Screen.print(fastTurn);
+        drawButton(429, 205, 50, 35, "Back", "main");
         Brain.Screen.render();
-        }
-    else{
+      } else {
 
         Brain.Screen.clearScreen();
         Brain.Screen.setPenColor(white);
-        Brain.Screen.setCursor(1,1);
+        Brain.Screen.setCursor(1, 1);
         Brain.Screen.setFillColor(black);
         Brain.Screen.print("Current Auton: ");
-        if(currentAuton == 0){
+        if (currentAuton == 0) {
 
-            Brain.Screen.setPenColor(yellow);
-            Brain.Screen.print("NONE SELECTED!!");
+          Brain.Screen.setPenColor(yellow);
+          Brain.Screen.print("NONE SELECTED!!");
 
-        }
-        else if(currentAuton == 1){
+        } else if (currentAuton == 1) {
 
-            Brain.Screen.setPenColor(red);
-            Brain.Screen.print("Red ALliance, High Stake Side");
+          Brain.Screen.setPenColor(red);
+          Brain.Screen.print("Red ALliance, High Stake Side");
 
-        }
-        else{
+        } else {
 
-            Brain.Screen.setPenColor(blue);
-            Brain.Screen.print("Blue Alliance, High Stake Side");
+          Brain.Screen.setPenColor(blue);
+          Brain.Screen.print("Blue Alliance, High Stake Side");
 
         }
         Brain.Screen.setFillColor(red);
@@ -217,362 +216,352 @@
         Brain.Screen.setFillColor(yellow);
         Brain.Screen.drawRectangle(0, 160, 479, 79);
         if (Brain.Screen.pressing()) {
-    int touchX = Brain.Screen.xPosition();
-    int touchY = Brain.Screen.yPosition();
-    if (touchY < 160) {
-        if (touchX < 240) currentAuton = 1;  
-        else currentAuton = 2;              
-    } else {
-        currentAuton = 0;                   
-}
-        
+          int touchX = Brain.Screen.xPosition();
+          int touchY = Brain.Screen.yPosition();
+          if (touchY < 160) {
+            if (touchX < 240) currentAuton = 1;
+            else currentAuton = 2;
+          } else {
+            currentAuton = 0;
+          }
 
-        drawButton(429, 205, 50, 35, "Back", "main");
-        Brain.Screen.render();
+          drawButton(429, 205, 50, 35, "Back", "main");
+          Brain.Screen.render();
+        }
+
+      }
+      vex::task::sleep(100);
+    }
+
+    /** 
+        double calculateHeading(double targetXLoc, double targetYLoc) {
+            double deltaX = targetXLoc - XLoc;
+            double deltaY = targetYLoc - YLoc;
+            double headingRadians = atan2(deltaY, deltaX);
+            double headingDegrees = headingRadians * (180.0 / 3.14159265358979323846);
+
+            headingDegrees = normalizeHeading(headingDegrees); 
+            double relativeHeading = normalizeHeading(headingDegrees - (currentHeading - initialHeading));
+            return relativeHeading;
         }
 
 
 
-    }
-        vex::task::sleep(100);
-    }
-
-
-    double calculateHeading(double targetXLoc, double targetYLoc) {
-        double deltaX = targetXLoc - XLoc;
-        double deltaY = targetYLoc - YLoc;
-        double headingRadians = atan2(deltaY, deltaX);
-        double headingDegrees = headingRadians * (180.0 / 3.14159265358979323846);
-
-        headingDegrees = normalizeHeading(headingDegrees); 
-        double relativeHeading = normalizeHeading(headingDegrees - (currentHeading - initialHeading));
-        return relativeHeading;
+    void updateCurrentHeading() {
+        double deltaHeading = (rightDistance - leftDistance) / 304.8; 
+        currentHeading = initialHeading - (deltaHeading * (180.0 / M_PI)); 
+        currentHeading = normalizeHeading(currentHeading);
     }
 
 
-
-void updateCurrentHeading() {
-    double deltaHeading = (rightDistance - leftDistance) / 304.8; 
-    currentHeading = initialHeading - (deltaHeading * (180.0 / M_PI)); 
-    currentHeading = normalizeHeading(currentHeading);
-}
-
-
-    
-
-
-
-    void updatePID() {
-        leftDistance = ((frontLeftDrive.position(degrees) + backLeftDrive.position(degrees) + middleLeftDrive.position(degrees)) / 3.0) * (wheelCircumference / 360.0);
-        rightDistance = ((frontRightDrive.position(degrees) + backRightDrive.position(degrees) + middleRightDrive.position(degrees)) / 3.0) * (wheelCircumference / 360.0);
-        leftDistanceMM = leftDistance * 0.887;
-        rightDistanceMM = rightDistance * 0.887;
-        LDT = leftDistanceMM - PLDT;
-        RDT = rightDistanceMM - PRDT;
-        PLDT = leftDistanceMM;
-        PRDT = rightDistanceMM;
-        updateCurrentHeading();
-        dXLoc = ((LDT + RDT) / 2) * cos(currentHeading * (3.14159265358979323846 / 180));
-        dYLoc = ((LDT + RDT) / 2) * sin(currentHeading * (3.14159265358979323846 / 180));
-        XLoc += dXLoc;
-        YLoc += dYLoc;
-        vex::task::sleep(10);
-    }
-
-    void turnToHeading(double targetHeading) {
-        targetHeading = normalizeHeading(targetHeading);
-        double error = normalizeHeading(targetHeading - (currentHeading - initialHeading));
         
-        int maxTurnSpeed = 50;
-        int minTurnSpeed = 20;
-
-        while (fabs(error) > 2) { 
-            turnSpeed = error * 0.35;
-
-            if (turnSpeed > maxTurnSpeed) turnSpeed = maxTurnSpeed;
-            else if (turnSpeed < -maxTurnSpeed) turnSpeed = -maxTurnSpeed;
-            else if (turnSpeed > 0 && turnSpeed < minTurnSpeed) turnSpeed = minTurnSpeed;
-            else if (turnSpeed < 0 && turnSpeed > -minTurnSpeed) turnSpeed = -minTurnSpeed;
-    if (fabs(error) < 2 && fabs(turnSpeed) < 5) {
-        leftDrive.stop();
-        rightDrive.stop();
-        return;
-    }
 
 
 
-            leftDrive.spin(forward, turnSpeed, percent);
-            rightDrive.spin(reverse, turnSpeed, percent);
-
-            updatePID();
+        void updatePID() {
+            leftDistance = ((frontLeftDrive.position(degrees) + backLeftDrive.position(degrees) + middleLeftDrive.position(degrees)) / 3.0) * (wheelCircumference / 360.0);
+            rightDistance = ((frontRightDrive.position(degrees) + backRightDrive.position(degrees) + middleRightDrive.position(degrees)) / 3.0) * (wheelCircumference / 360.0);
+            leftDistanceMM = leftDistance * 0.887;
+            rightDistanceMM = rightDistance * 0.887;
+            LDT = leftDistanceMM - PLDT;
+            RDT = rightDistanceMM - PRDT;
+            PLDT = leftDistanceMM;
+            PRDT = rightDistanceMM;
             updateCurrentHeading();
-            UI();
-            
-            error = normalizeHeading(targetHeading - (currentHeading - initialHeading)); 
+            dXLoc = ((LDT + RDT) / 2) * cos(currentHeading * (3.14159265358979323846 / 180));
+            dYLoc = ((LDT + RDT) / 2) * sin(currentHeading * (3.14159265358979323846 / 180));
+            XLoc += dXLoc;
+            YLoc += dYLoc;
+            vex::task::sleep(10);
         }
-    }
 
+        void turnToHeading(double targetHeading) {
+            targetHeading = normalizeHeading(targetHeading);
+            double error = normalizeHeading(targetHeading - (currentHeading - initialHeading));
+            
+            int maxTurnSpeed = 50;
+            int minTurnSpeed = 20;
 
-    
-void driveToPoint(double targetXLoc, double targetYLoc) {
-    headingToTarget = calculateHeading(targetXLoc, targetYLoc);
-    double deltaX = targetXLoc - XLoc;
-    double deltaY = targetYLoc - YLoc;
-    distanceToTarget = sqrt((deltaX * deltaX) + (deltaY * deltaY));
+            while (fabs(error) > 2) { 
+                turnSpeed = error * 0.35;
 
-    // Turn to the initial heading towards the target
-    turnToHeading(headingToTarget);
-
-    double maxSpeed = 50;   // Maximum driving speed
-    double minSpeed = 15;   // Minimum driving speed for fine adjustments
-    double slowDownDistance = 200; // Distance threshold to begin slowing down
-    functionRunning = true;
-
-    while (functionRunning) {
-        updatePID();
-        updateCurrentHeading();
-
-        // Recalculate position, heading, and distance to the target
-        deltaX = targetXLoc - XLoc;
-        deltaY = targetYLoc - YLoc;
-        distanceToTarget = sqrt((deltaX * deltaX) + (deltaY * deltaY));
-        headingToTarget = calculateHeading(targetXLoc, targetYLoc);
-
-        if (distanceToTarget < 40) {
+                if (turnSpeed > maxTurnSpeed) turnSpeed = maxTurnSpeed;
+                else if (turnSpeed < -maxTurnSpeed) turnSpeed = -maxTurnSpeed;
+                else if (turnSpeed > 0 && turnSpeed < minTurnSpeed) turnSpeed = minTurnSpeed;
+                else if (turnSpeed < 0 && turnSpeed > -minTurnSpeed) turnSpeed = -minTurnSpeed;
+        if (fabs(error) < 2 && fabs(turnSpeed) < 5) {
             leftDrive.stop();
             rightDrive.stop();
-            functionRunning = false;
-            driveCompleted++;
-            break;
+            return;
         }
 
-        double driveSpeed = maxSpeed;
-        if (distanceToTarget < slowDownDistance) {
-            driveSpeed = std::max(minSpeed, maxSpeed * (distanceToTarget / slowDownDistance));
+
+
+                leftDrive.spin(forward, turnSpeed, percent);
+                rightDrive.spin(reverse, turnSpeed, percent);
+
+                updatePID();
+                updateCurrentHeading();
+                UI();
+                
+                error = normalizeHeading(targetHeading - (currentHeading - initialHeading)); 
+            }
         }
 
-        double headingError = normalizeHeading(headingToTarget - currentHeading);
-        double correctionFactor = headingError * 0.2; // Reduce gain to avoid overcorrection
 
-        double leftSpeed = driveSpeed - correctionFactor;
-        double rightSpeed = driveSpeed + correctionFactor;
+        
+    void driveToPoint(double targetXLoc, double targetYLoc) {
+        headingToTarget = calculateHeading(targetXLoc, targetYLoc);
+        double deltaX = targetXLoc - XLoc;
+        double deltaY = targetYLoc - YLoc;
+        distanceToTarget = sqrt((deltaX * deltaX) + (deltaY * deltaY));
 
-        // Ensure motors don't exceed speed limits or reverse too strongly
-        if (leftSpeed > maxSpeed) leftSpeed = maxSpeed;
-        else if (leftSpeed < minSpeed) leftSpeed = minSpeed;
+        // Turn to the initial heading towards the target
+        turnToHeading(headingToTarget);
 
-        if (rightSpeed > maxSpeed) rightSpeed = maxSpeed;
-        else if (rightSpeed < minSpeed) rightSpeed = minSpeed;
+        double maxSpeed = 50;   // Maximum driving speed
+        double minSpeed = 15;   // Minimum driving speed for fine adjustments
+        double slowDownDistance = 200; // Distance threshold to begin slowing down
+        functionRunning = true;
 
-        // Apply speeds to motors
-        leftDrive.setVelocity(leftSpeed, percent);
-        rightDrive.setVelocity(rightSpeed, percent);
-        leftDrive.spin(forward);
-        rightDrive.spin(forward);
+        while (functionRunning) {
+            updatePID();
+            updateCurrentHeading();
+
+            // Recalculate position, heading, and distance to the target
+            deltaX = targetXLoc - XLoc;
+            deltaY = targetYLoc - YLoc;
+            distanceToTarget = sqrt((deltaX * deltaX) + (deltaY * deltaY));
+            headingToTarget = calculateHeading(targetXLoc, targetYLoc);
+
+            if (distanceToTarget < 40) {
+                leftDrive.stop();
+                rightDrive.stop();
+                functionRunning = false;
+                driveCompleted++;
+                break;
+            }
+
+            double driveSpeed = maxSpeed;
+            if (distanceToTarget < slowDownDistance) {
+                driveSpeed = std::max(minSpeed, maxSpeed * (distanceToTarget / slowDownDistance));
+            }
+
+            double headingError = normalizeHeading(headingToTarget - currentHeading);
+            double correctionFactor = headingError * 0.2; // Reduce gain to avoid overcorrection
+
+            double leftSpeed = driveSpeed - correctionFactor;
+            double rightSpeed = driveSpeed + correctionFactor;
+
+            // Ensure motors don't exceed speed limits or reverse too strongly
+            if (leftSpeed > maxSpeed) leftSpeed = maxSpeed;
+            else if (leftSpeed < minSpeed) leftSpeed = minSpeed;
+
+            if (rightSpeed > maxSpeed) rightSpeed = maxSpeed;
+            else if (rightSpeed < minSpeed) rightSpeed = minSpeed;
+
+            // Apply speeds to motors
+            leftDrive.setVelocity(leftSpeed, percent);
+            rightDrive.setVelocity(rightSpeed, percent);
+            leftDrive.spin(forward);
+            rightDrive.spin(forward);
+        }
     }
-}
 
 
-void drivePath(double points[][2], int numPoints) {
-    for (int i = 0; i < numPoints; i++) {
-        double targetX = points[i][0];
-        double targetY = points[i][1];
-        driveToPoint(targetX, targetY);
-        wait(50, msec); 
+    void drivePath(double points[][2], int numPoints) {
+        for (int i = 0; i < numPoints; i++) {
+            double targetX = points[i][0];
+            double targetY = points[i][1];
+            driveToPoint(targetX, targetY);
+            wait(50, msec); 
+        }
+
+        updateCurrentHeading();
+        updatePID();
+        UI();
+        }
+    */
+
+    void driveForward(int degreeNum) {
+
+      leftDrive.spinFor(degreeNum, degrees, false);
+      rightDrive.spinFor(degreeNum, degrees);
+
+    }
+    void driveReverse(int degreeNum) {
+
+      leftDrive.spinFor(reverse, degreeNum, degrees, false);
+      rightDrive.spinFor(reverse, degreeNum, degrees);
+
     }
 
-    updateCurrentHeading();
-    updatePID();
-    UI();
+    void setVelocity(int velocity) {
+
+      leftDrive.setVelocity(velocity, percent);
+      rightDrive.setVelocity(velocity, percent);
+
     }
 
-void driveForward(int degreeNum){
+    void turn(int direction, int degreeNum) {
 
-leftDrive.spinFor(degreeNum, degrees, false);
-   rightDrive.spinFor(degreeNum, degrees);
-
-}
-void driveReverse(int degreeNum){
-
-    leftDrive.spinFor(reverse, degreeNum, degrees, false);
-    rightDrive.spinFor(reverse, degreeNum, degrees);
-
-}
-
-void setVelocity(int velocity){
-
-    leftDrive.setVelocity(velocity, percent);
-    rightDrive.setVelocity(velocity, percent);
-
-}
-
-void turn(int direction, int degreeNum){
-
-    if(direction == 0){
+      if (direction == 0) {
 
         leftDrive.spinFor(reverse, degreeNum, degrees, false);
         rightDrive.spinFor(degreeNum, degrees);
 
-    }
-    else{
+      } else {
 
-        leftDrive.spinFor( degreeNum, degrees, false);
+        leftDrive.spinFor(degreeNum, degrees, false);
         rightDrive.spinFor(reverse, degreeNum, degrees);
-    }
+      }
 
-}
+    }
 
     void pre_auton() {
 
-        while(true){
+      while (true) {
 
-            UI();
+        UI();
 
-        }
+      }
 
     }
 
     void autonomous() {
-    if(currentAuton == 2){
+      if (currentAuton == 2) {
         intake.setVelocity(50, percent);
-    setVelocity(50);
-   driveReverse(1400);
-   setVelocity(20);
-   driveReverse(1140);
-   mogoClamp.set(true);
-   mogoClamped = true;
-   intake.spinFor(800, degrees, false);
-   turn(1, 500);
-   mogoClamp.set(false);
-   mogoClamped = false;
-   setVelocity(30);
-   driveForward(700);
-   wait(1, seconds);
-   intake.stop(brake);
-    intake.spinFor(800, degrees, false);
-   driveForward(420);
-  setVelocity(15);
-   turn(0, 570);
-   driveReverse(730);
-   mogoClamp.set(true);
-   mogoClamped = true;
-   intake.spin(forward);
-   wait(1, seconds);
-   setVelocity(40);
-   driveForward(800);
-   mogoClamp.set(false);
-   mogoClamped = false;
-   turn(0, 550);
-   driveForward(4000);
+        setVelocity(50);
+        driveReverse(1400);
+        setVelocity(15);
+        driveReverse(990);
+        intake.spinFor(1650, degrees, false);
+        mogoClamp.set(true);
+        mogoClamped = true;
+        driveReverse(150);
+        turn(1, 500);
+        mogoClamp.set(false);
+        mogoClamped = false;
+        intake.spinFor(reverse, 200, degrees, false);
+        setVelocity(30);
+        driveForward(805);
+        wait(0.5, seconds);
+        intake.spinFor(800, degrees, false);
+        driveForward(420);
+        setVelocity(15);
+        turn(0, 530);
+        driveReverse(730);
+        mogoClamp.set(true);
+        mogoClamped = true;
+        intake.spin(forward);
+        wait(1, seconds);
+        setVelocity(40);
+        driveForward(800);
+        mogoClamp.set(false);
+        mogoClamped = false;
+        turn(0, 590);
+        leftDrive.setTimeout(4, seconds);
+        rightDrive.setTimeout(4, seconds);
+        intake.stop(brake);
+        setVelocity(60);
+        driveForward(3000);
+      } else if (currentAuton == 1) {
+        setVelocity(50);
+        driveReverse(1400);
+        setVelocity(20);
+        driveReverse(1140);
+        mogoClamp.set(true);
+        mogoClamped = true;
+        intake.setVelocity(100, percent);
+        wait(1, seconds);
+        intake.spin(forward);
+        wait(1, seconds);
+        turn(0, 500);
+        mogoClamp.set(false);
+        mogoClamped = false;
+        setVelocity(30);
+        driveForward(700);
+        wait(1, seconds);
+        intake.stop(brake);
+        intake.spinFor(reverse, 1000, degrees, false);
+        driveForward(420);
+        setVelocity(15);
+        turn(1, 570);
+        driveReverse(730);
+        mogoClamp.set(true);
+        mogoClamped = true;
+        intake.spin(forward);
+        wait(2, seconds);
+        setVelocity(40);
+        driveForward(800);
+        mogoClamp.set(false);
+        mogoClamped = false;
+        turn(1, 550);
+        driveForward(4000);
+
+      } else {
+        Brain.Screen.print("NO AUTON SELECTED");
+      }
     }
-    else if(currentAuton == 1){
-       setVelocity(50);
-   driveReverse(1400);
-   setVelocity(20);
-   driveReverse(1140);
-   mogoClamp.set(true);
-   mogoClamped = true;
-   intake.setVelocity(100, percent);
-   wait(1, seconds);
-   intake.spin(forward);
-   wait(1, seconds);
-   turn(0, 500);
-   mogoClamp.set(false);
-   mogoClamped = false;
-   setVelocity(30);
-   driveForward(700);
-   wait(1, seconds);
-   intake.stop(brake);
-   intake.spinFor(reverse, 1000, degrees, false);
-   driveForward(420);
-      setVelocity(15);
-   turn(1, 570);
-   driveReverse(730);
-   mogoClamp.set(true);
-   mogoClamped = true;
-   intake.spin(forward);
-   wait(2, seconds);
-   setVelocity(40);
-   driveForward(800);
-      mogoClamp.set(false);
-   mogoClamped = false;
-   turn(1, 550);
-   driveForward(4000);
 
-    }
-    else {Brain.Screen.print("NO AUTON SELECTED");}
-    }
+    void usercontrol() {
+      while (1) {
+        int turnSpeed;
+        fastTurn = false;
+        /*
+            if(fastTurn == true) {turnSpeed = Controller.Axis1.position()*0.12;}
+            else if(fastTurn == false)  {turnSpeed = Controller.Axis1.position()*0.06;}
+            */
+        turnSpeed = Controller.Axis1.position() * 0.096;
+        int leftSpeed = (Controller.Axis3.position() * 0.12 + turnSpeed);
+        int rightSpeed = (Controller.Axis3.position() * 0.12 - turnSpeed);
 
-    void usercontrol() {   
-        while (1) {
-            int leftSpeed = (Controller.Axis3.position() + Controller.Axis1.position())*0.12;
-            int rightSpeed = (Controller.Axis3.position() - Controller.Axis1.position())* 0.12;
+        if (Controller.ButtonL1.PRESSED) {
 
-            if(leftSpeed>100){
+          if (fastTurn = false) {
+            fastTurn = true;
+          } else {
+            fastTurn = false;
+          }
 
-                leftSpeed = 100;
-
-            }
-            if(rightSpeed>100){
-
-                rightSpeed = 100;
-
-            }
-
-
-            leftDrive.spin(forward, leftSpeed, volt);
-            rightDrive.spin(forward, rightSpeed, volt);
-
-            if (Controller.ButtonR2.pressing()) intake.spin(forward, 12, volt);
-            else if (Controller.ButtonR1.pressing()) intake.spin(reverse, 12, volt);
-            else intake.stop();
-
-
-            double path1[][2] = {
-
-                {1200, 0},
-                {0, 0},
-                {1200, 0},
-                {0,0 }
-
-            };
-
-        if (Controller.ButtonY.pressing()) {
-        /** 
-    double path1[][2] = {
-        {1200, 0},
-        {1200, 600},
-        {600, 600},
-        {0, 0}
-    };
-    drivePath(path1, 4);
-    */
-
-
-}
-
-
-            if (Controller.ButtonL2.PRESSED) {
-                if(mogoClamped == false) {
-                    mogoClamped = true;
-                    mogoClamp.set(true);
-                }
-                else {
-                    mogoClamped = false;
-                    mogoClamp.set(false);
-                }
-            }
-
-            wait(20, msec);
-            UI(); 
-            updatePID();
-            updateCurrentHeading();
         }
+
+        if (leftSpeed > 100) {
+
+          leftSpeed = 100;
+
+        }
+        if (rightSpeed > 100) {
+
+          rightSpeed = 100;
+
+        }
+
+        leftDrive.spin(forward, leftSpeed, volt);
+        rightDrive.spin(forward, rightSpeed, volt);
+
+        if (Controller.ButtonR2.pressing()) intake.spin(forward, 12, volt);
+        else if (Controller.ButtonR1.pressing()) intake.spin(reverse, 12, volt);
+        else intake.stop();
+
+        if (Controller.ButtonL2.PRESSED) {
+          if (mogoClamped == false) {
+            mogoClamped = true;
+            mogoClamp.set(true);
+          } else {
+            mogoClamped = false;
+            mogoClamp.set(false);
+          }
+        }
+
+        wait(20, msec);
+        UI();
+      }
     }
 
     int main() {
-        Competition.autonomous(autonomous);
-        Competition.drivercontrol(usercontrol);
-        pre_auton();
-        while (true) wait(100, msec);
+      Competition.autonomous(autonomous);
+      Competition.drivercontrol(usercontrol);
+      pre_auton();
+      while (true) wait(100, msec);
     }
