@@ -81,10 +81,10 @@
       if (screen == "main") {
 
         Brain.Screen.clearScreen();
-        drawButton(0, 0, 240, 120, "PID Troubleshoot UI", "PIDUI");
+        //drawButton(0, 0, 240, 120, "PID Troubleshoot UI", "PIDUI");
         drawButton(240, 0, 239, 120, "Motor Temperatures", "temps");
-        drawButton(0, 120, 240, 119, "Other Troubleshooting UI", "troubleshootUI");
-        //drawButton(240, 120, 240, 119, "Auton Select", "atuon");     
+        drawButton(0, 0, 240, 119, "Other Troubleshooting UI", "troubleshootUI");
+        drawButton(0, 120, 240, 119, "Auton Select", "atuon");
         Brain.Screen.render();
 
       } else if (screen == "PIDUI") {
@@ -214,18 +214,29 @@
         Brain.Screen.setFillColor(blue);
         Brain.Screen.drawRectangle(240, 20, 239, 140);
         Brain.Screen.setFillColor(yellow);
-        Brain.Screen.drawRectangle(0, 160, 479, 79);
+        Brain.Screen.drawRectangle(0, 160, 240, 79);
         if (Brain.Screen.pressing()) {
           int touchX = Brain.Screen.xPosition();
           int touchY = Brain.Screen.yPosition();
           if (touchY < 160) {
-            if (touchX < 240) currentAuton = 1;
-            else currentAuton = 2;
-          } else {
+            if (touchX < 240 && currentAuton != 1) {
+              currentAuton = 1;
+              Controller.Screen.clearLine(3);
+              Controller.Screen.print("Red Alliance");
+            } else if (currentAuton != 2) {
+
+              currentAuton = 2;
+              Controller.Screen.clearLine(3);
+              Controller.Screen.print("Blue Alliance");
+
+            }
+          } else if (touchX < 240 && currentAuton != 0) {
             currentAuton = 0;
+            Controller.Screen.clearLine(3);
+            Controller.Screen.print("NO AUTON");
           }
 
-          drawButton(429, 205, 50, 35, "Back", "main");
+          drawButton(240, 160, 239, 79, "Back", "main");
           Brain.Screen.render();
         }
 
@@ -466,38 +477,41 @@
         setVelocity(60);
         driveForward(3000);
       } else if (currentAuton == 1) {
+        intake.setVelocity(50, percent);
         setVelocity(50);
         driveReverse(1400);
-        setVelocity(20);
-        driveReverse(1140);
+        setVelocity(15);
+        driveReverse(990);
+        intake.spinFor(1650, degrees, false);
         mogoClamp.set(true);
         mogoClamped = true;
-        intake.setVelocity(100, percent);
-        wait(1, seconds);
-        intake.spin(forward);
-        wait(1, seconds);
+        driveReverse(150);
         turn(0, 500);
         mogoClamp.set(false);
         mogoClamped = false;
+        intake.spinFor(reverse, 200, degrees, false);
         setVelocity(30);
-        driveForward(700);
-        wait(1, seconds);
-        intake.stop(brake);
-        intake.spinFor(reverse, 1000, degrees, false);
+        driveForward(805);
+        wait(0.5, seconds);
+        intake.spinFor(800, degrees, false);
         driveForward(420);
         setVelocity(15);
-        turn(1, 570);
+        turn(1, 530);
         driveReverse(730);
         mogoClamp.set(true);
         mogoClamped = true;
         intake.spin(forward);
-        wait(2, seconds);
+        wait(1, seconds);
         setVelocity(40);
         driveForward(800);
         mogoClamp.set(false);
         mogoClamped = false;
-        turn(1, 550);
-        driveForward(4000);
+        turn(1, 590);
+        leftDrive.setTimeout(4, seconds);
+        rightDrive.setTimeout(4, seconds);
+        intake.stop(brake);
+        setVelocity(60);
+        driveForward(3000);
 
       } else {
         Brain.Screen.print("NO AUTON SELECTED");
