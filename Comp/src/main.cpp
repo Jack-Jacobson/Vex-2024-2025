@@ -35,25 +35,19 @@
     motor_group leftDrive = motor_group(frontLeftDrive, middleLeftDrive, backLeftDrive);
     motor_group rightDrive = motor_group(frontRightDrive, middleRightDrive, backRightDrive);
 
-    int leftVel = 0, rightVel = 0, driveCompleted = 0, touchX, touchY, currentAuton = 2;
+    int leftVel = 0, rightVel = 0; //Velocity of each side of the robot, combines the left vertical axis (Axis 3, forward/reverse velocity) and the right horizontal axis (Axis 1, turning velocity);
+    int touchX, touchY; //Variables for where the screen is touched, used for buttons. 
+    int currentAuton = 2; //The selected auton to use, 0 = None, 1 = Red, 2 = Blue.
+    bool mogoClamped = false; //mogoClamped is wether or not the mogo clamp pistons are clamping, used to determine wether it should be turned on or off in the toggle.
+    bool fastTurn = false; //Toggle to slow down the turning, not implemented yet.
+    std::string screen = "main"; //What screen is being displayed on the brain, a string.
 
-    bool temp = false, slowSpeed = false, turnCompleted = false, functionRunning, mogoClamped = false, fastTurn;
-    double leftDistance, rightDistance, currentHeading = 0, distanceToTarget, headingToTarget, targetHeading, startX = 0, startY = 0;
-    double initialHeading = 90;
-    double p, i, d, error, pGain, leftVel2, rightVel2, LDT, RDT, PLDT, PRDT, DT, leftDistanceMM, rightDistanceMM, dXLoc, dYLoc, XLoc = startX, YLoc = startY;
-    double wheelDiameter = 69.85;
-    double wheelbase = 304.8;
-    double wheelCircumference = 3.14159265358979323846 * wheelDiameter;
+    #pragma region //An extreme amount of not-in-use PID variables
+    //double  wheelDiameter = 69.85, wheelbase = 304.8, wheelCircumference = 3.14159265358979323846 * wheelDiameter, leftDistance, rightDistance, currentHeading = 0, distanceToTarget, headingToTarget, targetHeading, startX = 0, startY = 0, p, i, d, error, pGain, leftVel2, rightVel2, LDT, RDT, PLDT, PRDT, DT, leftDistanceMM, rightDistanceMM, dXLoc, dYLoc, XLoc = startX, YLoc = startY, initialHeading = 0;
+    #pragma endregion
+    #pragma region //Functions for UI on Brain and Controller 
 
-    std::string screen = "main";
-
-    double normalizeHeading(double heading) {
-      while (heading > 180) heading -= 360;
-      while (heading <= -180) heading += 360;
-      return heading;
-    }
-
-    void drawButton(int x, int y, int w, int h, std::string t, std::string destination) {
+    void drawButton(int x, int y, int w, int h, std::string t, std::string destination, std::string Screen) {
       Brain.Screen.setFillColor(black);
       Brain.Screen.setPenColor(white);
       Brain.Screen.drawRectangle(x, y, w, h);
@@ -81,13 +75,15 @@
       if (screen == "main") {
 
         Brain.Screen.clearScreen();
-        //drawButton(0, 0, 240, 120, "PID Troubleshoot UI", "PIDUI");
-        drawButton(240, 0, 239, 120, "Motor Temperatures", "temps");
-        drawButton(0, 0, 240, 119, "Other Troubleshooting UI", "troubleshootUI");
-        drawButton(0, 120, 240, 119, "Auton Select", "atuon");
+        //drawButton(0, 0, 240, 120, "PID Troubleshoot UI", "PIDUI"); Button disabled to prevent auton selector glithces
+        drawButton(240, 0, 239, 120, "Motor Temperatures", "temps", "main");
+        drawButton(0, 0, 240, 119, "Other Troubleshooting UI", "troubleshootUI", "main");
+        drawButton(0, 120, 240, 119, "Auton Select", "atuon", "main");
         Brain.Screen.render();
 
       } else if (screen == "PIDUI") {
+        #pragma region //PID UI, displays all variable associated with PID, currently disable due to auton selector bugs.
+        /*
         Brain.Screen.setCursor(1, 1);
         Brain.Screen.setPenColor(white);
         Brain.Screen.setFillColor(black);
@@ -130,6 +126,9 @@
         Brain.Screen.print("%s", screen.c_str());
         drawButton(429, 205, 50, 35, "Back", "main");
         Brain.Screen.render();
+      }
+        */
+        #pragma endregion
       } else if (screen == "temps") {
         Brain.Screen.setCursor(1, 1);
         Brain.Screen.setPenColor(white);
@@ -156,7 +155,7 @@
         Brain.Screen.print(intake.temperature(celsius));
         Brain.Screen.print(",    N/A: ");
         Brain.Screen.print(backRightDrive.temperature(celsius));
-        drawButton(429, 205, 50, 35, "Back", "main");
+        drawButton(429, 205, 50, 35, "Back", "main", "temps");
         Brain.Screen.render();
       } else if (screen == "troubleshootUI") {
         Brain.Screen.clearScreen();
@@ -184,11 +183,11 @@
         Brain.Screen.print("%s", screen.c_str());
         Brain.Screen.print("fastTurn: ");
         Brain.Screen.print(fastTurn);
-        drawButton(429, 205, 50, 35, "Back", "main");
+        drawButton(429, 205, 50, 35, "Back", "main", "troubleshootUI");
         Brain.Screen.render();
       } else {
 
-        Brain.Screen.clearScreen();
+        Brain.Screen.clearLine(1);
         Brain.Screen.setPenColor(white);
         Brain.Screen.setCursor(1, 1);
         Brain.Screen.setFillColor(black);
@@ -198,45 +197,83 @@
           Brain.Screen.setPenColor(yellow);
           Brain.Screen.print("NONE SELECTED!!");
 
-        } else if (currentAuton == 1) {
+        } else if (currentAuton == 1 || currentAuton == 3) {
 
           Brain.Screen.setPenColor(red);
-          Brain.Screen.print("Red ALliance, High Stake Side");
+          Brain.Screen.print("Red ALliance, ");
+          if (currentAuton == 1) {
+
+            Brain.Screen.print("High Stake Side");
+
+          } else {
+
+            Brain.Screen.print("Non-High Stake Side");
+
+          }
 
         } else {
 
           Brain.Screen.setPenColor(blue);
-          Brain.Screen.print("Blue Alliance, High Stake Side");
+          Brain.Screen.print("Blue Alliance, ");
+          if (currentAuton == 2) {
+
+            Brain.Screen.print("High Stake Side");
+
+          } else if (currentAuton == 4) {
+
+            Brain.Screen.print("Non-High Stake Side");
+
+          }
 
         }
         Brain.Screen.setFillColor(red);
-        Brain.Screen.drawRectangle(0, 20, 240, 140);
+        Brain.Screen.drawRectangle(0, 20, 240, 70);
         Brain.Screen.setFillColor(blue);
-        Brain.Screen.drawRectangle(240, 20, 239, 140);
+        Brain.Screen.drawRectangle(240, 20, 239, 70);
+        Brain.Screen.setFillColor(green);
+        Brain.Screen.drawRectangle(0, 90, 240, 70);
+        Brain.Screen.setFillColor(purple);
+        Brain.Screen.drawRectangle(240, 90, 240, 70);
         Brain.Screen.setFillColor(yellow);
         Brain.Screen.drawRectangle(0, 160, 240, 79);
         if (Brain.Screen.pressing()) {
           int touchX = Brain.Screen.xPosition();
           int touchY = Brain.Screen.yPosition();
-          if (touchY < 160) {
+          if (touchY < 90) {
             if (touchX < 240 && currentAuton != 1) {
               currentAuton = 1;
               Controller.Screen.clearLine(3);
-              Controller.Screen.print("Red Alliance");
+              Controller.Screen.print("Red Alliance, HS");
             } else if (currentAuton != 2) {
 
               currentAuton = 2;
               Controller.Screen.clearLine(3);
-              Controller.Screen.print("Blue Alliance");
+              Controller.Screen.print("Blue Alliance, HS");
 
             }
+          } else if (touchY > 90 && touchY < 160) {
+
+            if (touchX < 240) {
+
+              currentAuton = 3;
+              Controller.Screen.clearLine(3);
+              Controller.Screen.print("Red Alliance, NHS");
+
+            } else {
+
+              currentAuton = 4;
+              Controller.Screen.clearLine(3);
+              Controller.Screen.print("Blue Alliance, NHS");
+
+            }
+
           } else if (touchX < 240 && currentAuton != 0) {
             currentAuton = 0;
             Controller.Screen.clearLine(3);
             Controller.Screen.print("NO AUTON");
           }
 
-          drawButton(240, 160, 239, 79, "Back", "main");
+          drawButton(240, 160, 239, 79, "Back", "main", "auton");
           Brain.Screen.render();
         }
 
@@ -244,7 +281,15 @@
       vex::task::sleep(100);
     }
 
+    #pragma endregion
+    #pragma region //WIP PID Functions (Not in use, not commonted)
     /** 
+         double normalizeHeading(double heading) {
+      while (heading > 180) heading -= 360;
+      while (heading <= -180) heading += 360;
+      return heading;
+    } 
+     
         double calculateHeading(double targetXLoc, double targetYLoc) {
             double deltaX = targetXLoc - XLoc;
             double deltaY = targetYLoc - YLoc;
@@ -393,7 +438,8 @@
         UI();
         }
     */
-
+    #pragma endregion
+    #pragma region //Functions for shortcutting moving the robot. Used in auton.
     void driveForward(int degreeNum) {
 
       leftDrive.spinFor(degreeNum, degrees, false);
@@ -428,58 +474,24 @@
       }
 
     }
+    #pragma endregion
 
     void pre_auton() {
 
       while (true) {
 
-        UI();
+        UI(); //Makes sure that you are able to use the auton selector and check motor temps while the controller is plugged in before auton.
 
-      }
+      } //Constantly updates the UI so you can properally use it.
 
-    }
+    } //Code running before auton; when the controller is plugged into field control before auton runs.
 
     void autonomous() {
-      if (currentAuton == 2) {
-        intake.setVelocity(50, percent);
-        setVelocity(50);
-        driveReverse(1400);
-        setVelocity(15);
-        driveReverse(990);
-        intake.spinFor(1650, degrees, false);
-        mogoClamp.set(true);
-        mogoClamped = true;
-        driveReverse(150);
-        turn(1, 500);
-        mogoClamp.set(false);
-        mogoClamped = false;
-        intake.spinFor(reverse, 200, degrees, false);
-        setVelocity(30);
-        driveForward(805);
-        wait(0.5, seconds);
-        intake.spinFor(800, degrees, false);
-        driveForward(420);
-        setVelocity(15);
-        turn(0, 530);
-        driveReverse(730);
-        mogoClamp.set(true);
-        mogoClamped = true;
-        intake.spin(forward);
-        wait(1, seconds);
-        setVelocity(40);
-        driveForward(800);
-        mogoClamp.set(false);
-        mogoClamped = false;
-        turn(0, 590);
-        leftDrive.setTimeout(4, seconds);
-        rightDrive.setTimeout(4, seconds);
-        intake.stop(brake);
-        setVelocity(60);
-        driveForward(3000);
-      } else if (currentAuton == 1) {
-        intake.setVelocity(50, percent);
-        setVelocity(50);
-        driveReverse(1400);
+      //Code to run if the current auton selected is red alliance.
+      if (currentAuton == 1) {
+        intake.setVelocity(100, percent);
+        setVelocity(47);
+        driveReverse(1300);
         setVelocity(15);
         driveReverse(990);
         intake.spinFor(1650, degrees, false);
@@ -490,46 +502,106 @@
         mogoClamp.set(false);
         mogoClamped = false;
         intake.spinFor(reverse, 200, degrees, false);
-        setVelocity(30);
+        setVelocity(40);
         driveForward(805);
-        wait(0.5, seconds);
         intake.spinFor(800, degrees, false);
-        driveForward(420);
+        driveForward(543);
         setVelocity(15);
-        turn(1, 530);
-        driveReverse(730);
+        turn(1, 539);
+        driveReverse(938);
         mogoClamp.set(true);
         mogoClamped = true;
-        intake.spin(forward);
-        wait(1, seconds);
-        setVelocity(40);
-        driveForward(800);
+        setVelocity(35);
+        driveForward(2000);
         mogoClamp.set(false);
         mogoClamped = false;
-        turn(1, 590);
-        leftDrive.setTimeout(4, seconds);
-        rightDrive.setTimeout(4, seconds);
-        intake.stop(brake);
-        setVelocity(60);
-        driveForward(3000);
+        driveReverse(700);
+        mogoClamp.set(true);
+        intake.spin(forward);
+        setVelocity(23);
+        driveForward(750);
+        mogoClamp.set(false);
+        setVelocity(70);
+        intake.stop();
+        turn(1, 832);
+        leftDrive.setTimeout(5, seconds);
+        rightDrive.setTimeout(5, seconds);
+        setVelocity(0);
 
-      } else {
+        driveForward(3300);
+      }
+      //Code to run if the current auto selected is blue alliance.
+      else if (currentAuton == 2) {
+        intake.setVelocity(100, percent);
+        setVelocity(47);
+        driveReverse(1300);
+        setVelocity(15);
+        driveReverse(990);
+        intake.spinFor(1650, degrees, false);
+        mogoClamp.set(true);
+        mogoClamped = true;
+        driveReverse(150);
+        turn(1, 500);
+        mogoClamp.set(false);
+        mogoClamped = false;
+        intake.spinFor(reverse, 200, degrees, false);
+        setVelocity(40);
+        driveForward(805);
+        intake.spinFor(800, degrees, false);
+        driveForward(543);
+        setVelocity(15);
+        turn(0, 539);
+        driveReverse(938);
+        mogoClamp.set(true);
+        mogoClamped = true;
+        setVelocity(35);
+        driveForward(2000);
+        mogoClamp.set(false);
+        mogoClamped = false;
+        driveReverse(700);
+        mogoClamp.set(true);
+        intake.spin(forward);
+        setVelocity(23);
+        driveForward(750);
+        mogoClamp.set(false);
+        setVelocity(70);
+        intake.stop();
+        turn(0, 832);
+        leftDrive.setTimeout(5, seconds);
+        rightDrive.setTimeout(5, seconds);
+        setVelocity(0);
+
+        driveForward(3300);
+      }
+      //Code to run if the current auto selected is red OR blue alliance (non-HS)
+      else if (currentAuton == 3 || currentAuton == 4) {
+
+        intake.setVelocity(100, percent);
+        setVelocity(47);
+        driveReverse(1300);
+        setVelocity(15);
+        driveReverse(990);
+        intake.spinFor(1650, degrees, false);
+        mogoClamp.set(true);
+        mogoClamped = true;
+        driveReverse(150);
+
+      }
+      //Code to run if the current auton selected is none.
+      else {
         Brain.Screen.print("NO AUTON SELECTED");
       }
     }
-
+    
     void usercontrol() {
       while (1) {
         int turnSpeed;
         fastTurn = false;
-        /*
-            if(fastTurn == true) {turnSpeed = Controller.Axis1.position()*0.12;}
-            else if(fastTurn == false)  {turnSpeed = Controller.Axis1.position()*0.06;}
-            */
+
         turnSpeed = Controller.Axis1.position() * 0.096;
         int leftSpeed = (Controller.Axis3.position() * 0.12 + turnSpeed);
         int rightSpeed = (Controller.Axis3.position() * 0.12 - turnSpeed);
-
+        /*
         if (Controller.ButtonL1.PRESSED) {
 
           if (fastTurn = false) {
@@ -540,6 +612,10 @@
 
         }
 
+        if(fastTurn == true) {turnSpeed = Controller.Axis1.position()*0.12;}
+        else if(fastTurn == false)  {turnSpeed = Controller.Axis1.position()*0.06;}
+        */
+        //^ Button to adjust turning speed (Disabled)
         if (leftSpeed > 100) {
 
           leftSpeed = 100;
